@@ -9,8 +9,8 @@ from bs4 import BeautifulSoup as Psoup
 """
 
 # 必填参数
-USERNAME = ""  # 学号
-PASSWORD = ""  # 门户密码
+USERNAME = "21251103249"  # 学号
+PASSWORD = "*TIMEtime5201314#"  # 门户密码
 NAME = ""  # 课程名
 SORT = "必修课"  # 课程分类，必修课（学科基础、专业必修课）、选修课（专业选修课）、通识课、专业内计划课、跨年级、跨专业
 PAGE = 1  # 页码，从 1 开始，超出页码会异常
@@ -18,8 +18,8 @@ INDEX = -1  # 下标，请根据运行结果给出课程开头的数字
 
 # 可选参数
 TEACHER = ""  # 教师名称
-DAY_OF_WEEK = ""  # 周几，1..7
-SECTION = ""  # 节次，如 1-2，必须与周几搭配使用，不然是空的
+DAY_OF_WEEK = ""  # 周几，1 ~ 7，写数字就行了
+SECTION = ""  # 节次，如 “1-2”，如果不为空则 DAY_OF_WEEK 也必须给出，不然结果是空的
 
 
 class Sort:
