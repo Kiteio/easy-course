@@ -1,0 +1,4 @@
+numpy==1.26.2
+requests
+bs4
+ddddocr

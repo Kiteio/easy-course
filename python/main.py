@@ -18,8 +18,13 @@ INDEX = -1  # 下标，请根据运行结果给出课程开头的数字
 # 可选参数（仅限非必修、选修课）
 NAME = ""  # 课程名
 TEACHER = ""  # 教师名称
-DAY_OF_WEEK = ""  # 周几，1 ~ 7，写数字就行了
+DAY_OF_WEEK = ""  # 星期几，1 ~ 7，写数字就行了
 SECTION = ""  # 节次，如 “1-2”，如果不为空则 DAY_OF_WEEK 也必须给出，不然结果是空的
+
+# 其他参数
+ENTER_MAX_RETRY = 20  # 获取选课系统链接的重试次数
+ENTER_INTERVAL = 2  # 单位秒，获取选课系统链接的间隔
+INTERVAL = 1  # 单位秒，选课轮询间隔
 
 
 class Sort:
@@ -54,7 +59,7 @@ class User:
         """选课路由"""
         return f"/xsxkkc/{sorts[sort].pick_route}xkOper?jx0404id={course_id}&xkzy=&trjf=&cxxdlx=1"
 
-    def __init__(self, name, pwd, max_retry = 20):
+    def __init__(self, name, pwd, max_retry = ENTER_MAX_RETRY):
         """登录"""
         print(
             "本项目完全免费。我们的 Github 仓库是 https://github.com/Kiteio/easy-course。如果对您有帮助，请花点时间为我们点亮 Star。")
@@ -91,7 +96,7 @@ class User:
                 return
         raise Exception("超出最大重试次数，登录失败，请检查信息后重试。")
 
-    def __enter_system(self, max_retry=20):
+    def __enter_system(self, max_retry):
         """进入选课系统"""
         entry = None
         response = self.__session.get(self.__root + self.__base + self.__entry)
@@ -105,7 +110,7 @@ class User:
 
         if entry is None:
             if max_retry > 0:
-                sleep_time = 2
+                sleep_time = ENTER_INTERVAL
                 print(f"[{self.name}] 无进入选课链接，{sleep_time}s 后重试")
                 time.sleep(sleep_time)
                 return self.__enter_system(max_retry - 1)
@@ -208,7 +213,7 @@ class User:
                 else:
                     if data["message"] == "选课失败：此课堂选课人数已满！":
                         print(f"{self.name} 满员")
-                        time.sleep(1)
+                        time.sleep(INTERVAL)
                         return self.pick(course_id, sort)
                     else:
                         print(f"[{self.name}] {data['message']}")
