@@ -1,12 +1,7 @@
 import ddddocr, requests, time
 from urllib import parse
+from datetime import datetime
 from bs4 import BeautifulSoup as Psoup
-
-"""
-    >>> pip install requests
-    >>> pip install bs4
-    >>> pip install ddddocr
-"""
 
 # 必填参数
 USERNAME = ""  # 学号
@@ -23,8 +18,9 @@ SECTION = ""  # 节次，如 “1-2”，如果不为空则 DAY_OF_WEEK 也必�
 
 # 其他参数
 ENTER_MAX_RETRY = 20  # 获取选课系统链接的重试次数
-ENTER_INTERVAL = 2  # 单位秒，获取选课系统链接的间隔
+ENTER_INTERVAL = 1  # 单位秒，获取选课系统链接的间隔
 INTERVAL = 1  # 单位秒，选课轮询间隔
+START_TIME = ""  # 如 9:30，选课开始时间（在退课时可以先开，选课时会直接抢，可能有 bug）
 
 
 class Sort:
@@ -60,7 +56,6 @@ class User:
         return f"/xsxkkc/{sorts[sort].pick_route}xkOper?jx0404id={course_id}&xkzy=&trjf=&cxxdlx=1"
 
     def __init__(self, name, pwd, max_retry = ENTER_MAX_RETRY):
-        """登录"""
         print(
             "本项目完全免费。我们的 Github 仓库是 https://github.com/Kiteio/easy-course。如果对您有帮助，请花点时间为我们点亮 Star。")
         print("使用本项目代表您同意我们 Github 上的免责声明。")
@@ -72,6 +67,14 @@ class User:
         with requests.Session() as session:
             self.__session = session
 
+        self.__login_enter(name, pwd, max_retry)
+
+    def reload(self, max_retry = ENTER_MAX_RETRY):
+        """重新登录并进入选课系统"""
+        self.__login_enter(self.name, self.__pwd, max_retry)
+
+    def __login_enter(self, name, pwd, max_retry):
+        """登录并进入选课系统"""
         # 获取 Cookie
         self.__session.get(self.__root + self.__base)
 
@@ -92,6 +95,7 @@ class User:
             soup = Psoup(response.text, "html.parser")
             if soup.find("title").text == "学生个人中心":
                 self.name = name
+                self.__pwd = pwd
                 self.__enter_system(max_retry)
                 return
         raise Exception("超出最大重试次数，登录失败，请检查信息后重试。")
@@ -214,14 +218,21 @@ class User:
                     if data["message"] == "选课失败：此课堂选课人数已满！":
                         print(f"{self.name} 满员")
                         time.sleep(INTERVAL)
-                        return self.pick(course_id, sort)
                     else:
-                        print(f"[{self.name}] {data['message']}")
-            except KeyError as e:
+                        print(f"[{self.name}] （选课还在继续，请确保该信息正确，非冲突等异常信息）{data['message']}")
+
+                    return self.pick(course_id, sort)
+            except KeyError:
                 print(f"[{self.name}] 账号可能在别处登录，已退出")
-        except RecursionError as e:
+        except RecursionError:
             # 递归过限
             self.pick(course_id, sort)
+
+
+def check_time(name, h, m):
+    now = datetime.now()
+    print(f"[{name}] 等待选课开始：{now.hour}:{now.minute}:{now.second} -> {h}:{m}")
+    return now.hour == h and now.minute == m - 1 and now.second > 50  # 提前 10 s
 
 
 if __name__ == "__main__":
@@ -239,4 +250,19 @@ if __name__ == "__main__":
     if INDEX == -1:
         print(f"INDEX = -1，已退出")
     else:
-        user.pick(courses[INDEX]["id"], SORT)
+        if START_TIME != "":
+            try:
+                split = START_TIME.split(":")
+
+                # 等待选课开始
+                while not check_time(user.name, int(split[0]), int(split[1])):
+                    time.sleep(1)
+            except Exception as e:
+                raise Exception("请输入正确的时间格式：小时:分钟（hh:mm，冒号为英文冒号）")
+
+        try:
+            user.pick(courses[INDEX]["id"], SORT)
+        except:
+            # 重试
+            user.reload()
+            user.pick(courses[INDEX]["id"], SORT)
